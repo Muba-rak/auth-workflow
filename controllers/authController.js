@@ -1,4 +1,6 @@
 const User = require("../models/User");
+const Token = require("../models/Token");
+
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 const {
@@ -48,6 +50,7 @@ const register = async (req, res) => {
   // send verification token back only while testing in postman!!!
   res.status(StatusCodes.CREATED).json({
     msg: "Success! Please check your email to verify account",
+    verificationToken,
   });
 };
 
@@ -55,7 +58,7 @@ const verifyEmail = async (req, res) => {
   const { verificationToken, email } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
-    throw new CustomError.UnauthenticatedError("Verification Failed");
+    throw new CustomError.UnauthenticatedError("Verification Failedd");
   }
   if (verificationToken !== user.verificationToken) {
     throw new CustomError.UnauthenticatedError("Verification Failed");
@@ -85,7 +88,15 @@ const login = async (req, res) => {
     return res.status(401).json({ msg: "Please, verify your email" });
   }
   const tokenUser = createTokenUser(user);
-  attachCookiesToResponse({ res, user: tokenUser });
+  let refreshToken = "";
+
+  refreshToken = crypto.randomBytes(40).toString("hex");
+  const userAgent = req.headers["user-agent"];
+  const ip = req.ip;
+  const userToken = { refreshToken, userAgent, ip, user: user._id };
+
+  await Token.create(userToken);
+  // attachCookiesToResponse({ res, user: tokenUser });
 
   res.status(StatusCodes.OK).json({ user: tokenUser });
 };
